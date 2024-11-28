@@ -1,14 +1,23 @@
+#include "simulation.hpp"
 #include "player.hpp"
 #include <iostream>
 #include <iomanip>
 #include <fstream>
 #include <vector>
 #include <utility>
+#include <chrono>
+#include <math.h>
+#include <random>
+#include <memory>
+
 
 // std::ofstream testy("wyniki.txt");
 
 Player::Player(Model &board, bool numberOfPlayer, std::vector<int> weightEvaluateFunction)
     : model(board), player(numberOfPlayer), weightEvaluateFunction(weightEvaluateFunction) {
+}
+Player::Player(Model &board, bool numberOfPlayer)
+    : model(board), player(numberOfPlayer) {
 }
 // DODAJ FUNKCJE FIND BEST MOVE
 void Player::make_move(int move){
@@ -16,6 +25,9 @@ void Player::make_move(int move){
 }
 void Player::make_minmax_move(int depth){
     model.make_move(minmax(model.get_board(),depth,player, INT_MIN, INT_MAX).second,player, model.get_board());
+}
+void Player::make_mcts_move(float resources){
+    model.make_move(monte_carlo_tree_search(model.get_board(),resources,player),player,model.get_board());
 }
 float Player::evaluate(std::array<std::array<int,11>,2> board){
     // for(int i = 0; i<2; i++){
@@ -37,7 +49,7 @@ float Player::evaluate(std::array<std::array<int,11>,2> board){
             break;
     }
     std::vector<float> C_values(26,0);
-    // C1,C2
+    // C0,C1
     C_values.at(0) = float(board.at(1).at(9));
     C_values.at(1) = float(-board.at(0).at(9));
     // C2-C9,C10-C17, C18,C19
@@ -178,6 +190,123 @@ std::pair<float,int> Player::minmax(std::array<std::array<int,11>,2> board, int 
 
     }
 }
+int Player::monte_carlo_tree_search(std::array<std::array<int,11>,2> board, float resources, int is_maximizing_player){
+    auto start = std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    auto root = std::make_shared<node>(is_maximizing_player,board,nullptr,-1,model.get_legal_moves(is_maximizing_player,board),model.game_over_check(board));
+    while(duration.count()<=resources){
+        std::shared_ptr<node> v = tree_policy(root);
+        float reward = default_policy(v);
+        back_propagation(v,reward);
+        end = std::chrono::high_resolution_clock::now();
+        duration = end - start;
+    }
+    return best_move(root);
+}
+int Player::best_move(std::shared_ptr<node> root){
+    int best_move = -1;
+    int best_value = -1;
+    for (auto child : root->childrens){
+        if(child->simulations>best_value){
+            best_value=child->simulations;
+            best_move=child->action;
+        }    
+    }
+    return best_move;
+}
+std::shared_ptr<node> Player::tree_policy(std::shared_ptr<node> state){
+    if(state->game_status!=0){
+        return state;
+    }
+    if (!fully_expanded(state)){
+        return expand(state);
+    }else{
+        return tree_policy(best_child(state,sqrt(2.0)));
+    }
+}
+bool Player::fully_expanded(std::shared_ptr<node> state){
+    std::vector<int> moves = model.get_legal_moves(state->player,state->board);
+    if (state->possible_actions.size()>0){
+        return false;
+    }else{
+        return true;
+    }
+}
+std::shared_ptr<node> Player::best_child(std::shared_ptr<node> state, float c){
+    int best_child=-1;
+    float best_value = -1;
+    for (int i = 0;i<state->childrens.size();i++){
+        float value = (state->childrens.at(i)->reward/state->childrens.at(i)->simulations)+(c*sqrt(log(state->simulations)/state->childrens.at(i)->simulations));
+        if (value > best_value){
+            best_child = i;
+            best_value = value;
+        }
+    }
+    if (best_child==-1){
+        std::cout<<std::endl<<state->childrens.at(0)->reward<<" "<<state->childrens.at(0)->simulations<<" "<<state->simulations<<std::endl;
+        for(int i = 0; i<2; i++){
+            for(int j = 0; j<11; j++){
+                std::cout<<std::setfill('0')<<std::setw(2)<<state->board.at(i).at(j)<<" ";
+            }
+        std::cout<<std::endl;
+    }
+    std::cout<<state->parent->simulations<<" "<<state->parent->parent->simulations;
+    }
+    return state->childrens.at(best_child);
+}
+std::shared_ptr<node> Player::expand(std::shared_ptr<node> state){
+    auto seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+    std::mt19937 rng(static_cast<unsigned>(seed));
+    std::uniform_int_distribution<int> genRand(0, state->possible_actions.size()-1);
+    std::array<std::array<int,11>,2>temp_board = state->board;
+    int move = genRand(rng);
+    model.make_move(state->possible_actions.at(move),state->player,temp_board);
+    auto new_state = std::make_shared<node>(!state->player,temp_board,state,state->possible_actions.at(move),model.get_legal_moves(!state->player,temp_board),model.game_over_check(temp_board));
+
+    state->possible_actions.erase(state->possible_actions.begin()+move);
+    state->childrens.push_back(new_state);
+
+    return new_state;
+}
+float Player::default_policy(std::shared_ptr<node> state){
+    int result = 0;
+    if (state->game_status==0){
+        result = random_simulation(state->board,state->player);
+    }else{
+        result = state->game_status;
+    }
+    if (result==1){
+        if (state->player){
+            return 1;
+        }else{
+            return 0;
+        }
+    }else if(result==2){
+        if(state->player){
+            return 0;
+        }else{
+            return 1;
+        }
+    }else if(result==3){
+        return 0.5;
+    }
+}
+void Player::back_propagation(std::shared_ptr<node> state, float reward){
+    state->reward+=reward;
+    state->simulations+=1;
+    if(state->parent!=nullptr){
+        if (reward==1){
+            back_propagation(state->parent,0);
+        }else if (reward ==0){
+            back_propagation(state->parent,1);
+            
+        }else{
+            back_propagation(state->parent,0.5);
+        }
+    }
+}
+
 // int Player::findBestMove(std::array<std::array<int,11>,2> board, int depth, int isMaximizingPlayer) {
 //     float bestEval = isMaximizingPlayer ? INT32_MIN : INT32_MAX;
 //     int bestMove = -1;

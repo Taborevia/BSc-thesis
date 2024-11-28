@@ -16,6 +16,7 @@ public:
     bool is_any_legal_move(bool player, std::array<std::array<int,11>,2>& temp_board);
     std::vector<int> get_legal_moves(bool player, std::array<std::array<int,11>,2>& board);
     int game_over_check(std::array<std::array<int,11>,2>& board);
+    void set_board(std::array<std::array<int,11>,2> board);
 };
 
 #endif

@@ -158,3 +158,6 @@ void Model::print_board(){
         std::cout<<std::endl;
     }
 }
+void Model::set_board(std::array<std::array<int,11>,2> new_board){
+    this->board = new_board;
+}
