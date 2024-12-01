@@ -59,9 +59,9 @@ float Player::evaluate(std::array<std::array<int,11>,2> board){
             for (int i = 0;i<9;i++){
                 if (board.at(!player).at(i) == -3){
                     if (player){
-                        C_values.at(2+i)++;  //C2-C9 czytajac od lewej
+                        C_values.at(10-i)++;  //C2-C9 czytajac od prawej
                     }else {
-                        C_values.at(9+i)--; //C10-C17 czytajac od lewej
+                        C_values.at(10+i)--; //C10-C17 czytajac od lewej
                     }
                     bool side = !player;
                     int move = i;
@@ -124,6 +124,10 @@ float Player::evaluate(std::array<std::array<int,11>,2> board){
             }
         }
     }
+    // for (int i = 0;i<C_values.size();i++){
+    //     std::cout<<C_values.at(i)<<" ";
+    // }
+    // std::cout<<std::endl;
     //normalizacja wartosci C
     C_values.at(0) /= 81;
     C_values.at(1) /= 81;
