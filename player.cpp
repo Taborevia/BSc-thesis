@@ -26,8 +26,8 @@ void Player::make_move(int move){
 void Player::make_minmax_move(int depth){
     model.make_move(minmax(model.get_board(),depth,player, INT_MIN, INT_MAX).second,player, model.get_board());
 }
-void Player::make_mcts_move(float resources){
-    model.make_move(monte_carlo_tree_search(model.get_board(),resources,player),player,model.get_board());
+void Player::make_mcts_move(float resources, float c_parameter){
+    model.make_move(monte_carlo_tree_search(model.get_board(),resources,player,c_parameter),player,model.get_board());
 }
 float Player::evaluate(std::array<std::array<int,11>,2> board){
     // for(int i = 0; i<2; i++){
@@ -194,13 +194,13 @@ std::pair<float,int> Player::minmax(std::array<std::array<int,11>,2> board, int 
 
     }
 }
-int Player::monte_carlo_tree_search(std::array<std::array<int,11>,2> board, float resources, int is_maximizing_player){
+int Player::monte_carlo_tree_search(std::array<std::array<int,11>,2> board, float resources, int is_maximizing_player, float c_parameter){
     auto start = std::chrono::high_resolution_clock::now();
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
     auto root = std::make_shared<node>(is_maximizing_player,board,nullptr,-1,model.get_legal_moves(is_maximizing_player,board),model.game_over_check(board));
     while(duration.count()<=resources){
-        std::shared_ptr<node> v = tree_policy(root);
+        std::shared_ptr<node> v = tree_policy(root,c_parameter);
         float reward = default_policy(v);
         back_propagation(v,reward);
         end = std::chrono::high_resolution_clock::now();
@@ -219,14 +219,14 @@ int Player::best_move(std::shared_ptr<node> root){
     }
     return best_move;
 }
-std::shared_ptr<node> Player::tree_policy(std::shared_ptr<node> state){
+std::shared_ptr<node> Player::tree_policy(std::shared_ptr<node> state, float c){
     if(state->game_status!=0){
         return state;
     }
     if (!fully_expanded(state)){
         return expand(state);
     }else{
-        return tree_policy(best_child(state,sqrt(2.0)));
+        return tree_policy(best_child(state,c),c);
     }
 }
 bool Player::fully_expanded(std::shared_ptr<node> state){
