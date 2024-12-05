@@ -198,7 +198,7 @@ int Player::monte_carlo_tree_search(std::array<std::array<int,11>,2> board, floa
     auto start = std::chrono::high_resolution_clock::now();
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    auto root = std::make_shared<node>(is_maximizing_player,board,nullptr,-1,model.get_legal_moves(is_maximizing_player,board),model.game_over_check(board));
+    auto root = std::make_shared<node>(is_maximizing_player,board,std::weak_ptr<node>(),-1,model.get_legal_moves(is_maximizing_player,board),model.game_over_check(board),true);
     while(duration.count()<=resources){
         std::shared_ptr<node> v = tree_policy(root,c_parameter);
         float reward = default_policy(v);
@@ -255,7 +255,7 @@ std::shared_ptr<node> Player::best_child(std::shared_ptr<node> state, float c){
             }
         std::cout<<std::endl;
     }
-    std::cout<<state->parent->simulations<<" "<<state->parent->parent->simulations;
+    // std::cout<<state->parent->simulations<<" "<<state->parent->parent->simulations;
     }
     return state->childrens.at(best_child);
 }
@@ -266,7 +266,7 @@ std::shared_ptr<node> Player::expand(std::shared_ptr<node> state){
     std::array<std::array<int,11>,2>temp_board = state->board;
     int move = genRand(rng);
     model.make_move(state->possible_actions.at(move),state->player,temp_board);
-    auto new_state = std::make_shared<node>(!state->player,temp_board,state,state->possible_actions.at(move),model.get_legal_moves(!state->player,temp_board),model.game_over_check(temp_board));
+    auto new_state = std::make_shared<node>(!state->player,temp_board,state,state->possible_actions.at(move),model.get_legal_moves(!state->player,temp_board),model.game_over_check(temp_board),false);
 
     state->possible_actions.erase(state->possible_actions.begin()+move);
     state->childrens.push_back(new_state);
@@ -299,14 +299,15 @@ float Player::default_policy(std::shared_ptr<node> state){
 void Player::back_propagation(std::shared_ptr<node> state, float reward){
     state->reward+=reward;
     state->simulations+=1;
-    if(state->parent!=nullptr){
+    if(!state->root){
+        auto temp = state->parent.lock();
         if (reward==1){
-            back_propagation(state->parent,0);
+            back_propagation(temp,0);
         }else if (reward ==0){
-            back_propagation(state->parent,1);
+            back_propagation(temp,1);
             
         }else{
-            back_propagation(state->parent,0.5);
+            back_propagation(temp,0.5);
         }
     }
 }
