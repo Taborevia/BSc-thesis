@@ -23,6 +23,8 @@ public:
     void crossover(std::vector<individual>& population, std::mt19937& rng);
     void crossover_roulette(std::vector<individual>& population, std::mt19937& rng);
     void fitnessAll(std::vector<individual>& population);
+    void fitnessAll_2(std::vector<individual>& population);
+    bool genetic_end_check(std::vector<individual>& population,int max);
 public:
     void genetic_algorithm(int populationSize, int numberOfGenerations, float propabilityOfMutation, int numberOfWages,  std::mt19937& rng);
 };

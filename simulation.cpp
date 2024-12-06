@@ -83,29 +83,55 @@ int random_simulation(std::array<std::array<int,11>,2> board, bool is_maximazing
     }
     return 0;
 }
-int simulation_mcts_minmax(std::vector<int> genotype, int depth, float resources, float c_parameter){
+std::vector<float> simulation_mcts_minmax(std::vector<int> genotype, int depth, float resources, float c_parameter, bool is_mcts_first_player){
     // auto start = std::chrono::high_resolution_clock::now();
     Model board;
     Player player0(board,0, genotype);
     Player player1(board,1, genotype);
+    float time1 = 0;
+    float time2 = 0;
     bool game = true;
     bool player = 0;
     int moves = 0;
     while(game){
-        if (moves >1000){
-            return 3;
-        }
         moves++;
+        if (moves >1000){
+            return std::vector<float>{3,time1/float(std::ceil((moves/2))),time2/float(std::floor((moves/2)))};
+        }
         // board.print_board();
         std::cout<<moves;
-        if (!player){
-            player0.make_mcts_move(resources,c_parameter);
+        if(is_mcts_first_player){
+            if (!player){
+                auto start = std::chrono::high_resolution_clock::now();
+                player0.make_mcts_move(resources,c_parameter);
+                auto end = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> duration = end - start;
+                time1 += duration.count();
+            }else{
+                auto start = std::chrono::high_resolution_clock::now();
+                player1.make_minmax_move(depth);
+                auto end = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> duration = end - start;
+                time2 += duration.count();
+            }
         }else{
-            player1.make_minmax_move(depth);
+            if (!player){
+                auto start = std::chrono::high_resolution_clock::now();
+                player0.make_minmax_move(depth);
+                auto end = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> duration = end - start;
+                time1 += duration.count();
+            }else{
+                auto start = std::chrono::high_resolution_clock::now();
+                player1.make_mcts_move(resources,c_parameter);
+                auto end = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> duration = end - start;
+                time2 += duration.count();
+            }
         }
         player = !player;
         int game_status = board.game_over_check(board.get_board());
-        auto end = std::chrono::high_resolution_clock::now();
+        // auto end = std::chrono::high_resolution_clock::now();
         // std::chrono::duration<double> duration = end - start;
         // if (duration.count()>60){
         //     board.print_board();
@@ -114,7 +140,7 @@ int simulation_mcts_minmax(std::vector<int> genotype, int depth, float resources
         if (game_status==0){
             continue;
         }else{
-            return game_status;
+            return std::vector<float>{float(game_status),time1/float(std::ceil((moves/2))),time2/float(std::floor((moves/2)))};
         }
         
     }

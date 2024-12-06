@@ -3,7 +3,6 @@
 #include <iomanip>
 #include <numeric>
 #include <fstream>
-#include <windows.h>
 
 std::ofstream outfile("output.txt");
 
