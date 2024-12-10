@@ -33,19 +33,47 @@ int main(int argc, char* argv[]){
     genotypy.push_back(wyniki_2_new);
     genotypy.push_back(wyniki_3_new);
     genotypy.push_back(wyniki_4_new);
-    std::ofstream output("parametryzacja_mcts_2_test.txt");
-    for (float i = 0;i<4;i+=0.5){
-        for(int j=1;j<=10;j++){
-            int result = simulation_mcts_mcts(100,i,0.2,i+0.2);
-            output<<" "<<i<<" "<<i+0.5<<" "<<result<<std::endl;
+    std::ofstream output("testy_multi_threading.txt");
+    std::vector<float> results;
+    int result;
+    for (float i = 9;i<=9;i++){
+        for(int j=1;j<=100;j++){
+            result = simulation_mcts_mcts(0.2,0.7,true,0.2,0.7,false);
+            output<<"1"<<" 0 "<<result<<std::endl;
+            result = simulation_mcts_mcts(0.2,0.7,false,0.2,0.7,true);
+            output<<"0"<<" 1 "<<result<<std::endl;
+            // results = simulation_mcts_minmax(wyniki_4_new,i,0.2,0.7,true);
+            // output<<"mcts: "<<0.2<<" czas: "<<results.at(1)<<" "<<"minmax: "<<i<<" czas: "<<results.at(2)<<" wynik: "<<results.at(0)<<std::endl;
+            // results = simulation_mcts_minmax(wyniki_4_new,i,0.2,0.7,false);
+            // output<<"minmax: "<<i<<" czas: "<<results.at(1)<<" mcts: "<<0.2<<" czas: "<<results.at(2)<<" wynik: "<<results.at(0)<<std::endl;
             // output<<" "<<i+0.5<<" "<<i<<" "<<result<<std::endl;
             // output<<"parametr: "<<i<<"z botem o glebokosci: "<<j<<"wynik: "<<result<<std::endl;
             // result = simulation(genotypy.at(j), genotypy.at(i), std::stoi(argv[1]) ,std::stoi(argv[2]),0,0).at(0);
             // output<<"bot o glebokosci: "<<j<<"z parametrem: "<<i<<"wynik: "<<result<<std::endl;
-            std::cout<<std::endl<<i<<" "<<j;
+            // std::cout<<std::endl<<i<<" "<<j;
         }
-        output<<std::endl;
+        // output<<std::endl;
     }
+    output.close();
+    // std::ofstream output2("testy_mcts_minmax_sobota_2.txt");
+    // for (float i = 9;i<=9;i++){
+    //     for(int j=1;j<=100;j++){
+    //         // result = simulation_mcts_mcts(0.2,0.7,true,0.2,0.7,false);
+    //         // output<<"1"<<" 0 "<<result<<std::endl;
+    //         // result = simulation_mcts_mcts(0.2,0.7,false,0.2,0.7,true);
+    //         // output<<"0"<<" 1 "<<result<<std::endl;
+    //         results = simulation_mcts_minmax(funkcja_0,i,0.2,0.7,true);
+    //         output2<<"mcts: "<<0.2<<" czas: "<<results.at(1)<<" "<<"minmax: "<<i<<" czas: "<<results.at(2)<<" wynik: "<<results.at(0)<<std::endl;
+    //         results = simulation_mcts_minmax(funkcja_0,i,0.2,0.7,false);
+    //         output2<<"minmax: "<<i<<" czas: "<<results.at(1)<<" mcts: "<<0.2<<" czas: "<<results.at(2)<<" wynik: "<<results.at(0)<<std::endl;
+    //         // output<<" "<<i+0.5<<" "<<i<<" "<<result<<std::endl;
+    //         // output<<"parametr: "<<i<<"z botem o glebokosci: "<<j<<"wynik: "<<result<<std::endl;
+    //         // result = simulation(genotypy.at(j), genotypy.at(i), std::stoi(argv[1]) ,std::stoi(argv[2]),0,0).at(0);
+    //         // output<<"bot o glebokosci: "<<j<<"z parametrem: "<<i<<"wynik: "<<result<<std::endl;
+    //         std::cout<<std::endl<<i<<" "<<j;
+    //     }
+    //     // output<<std::endl;
+    // }
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
     std::cout << "Czas wykonania: " << duration.count() << " sekund" << std::endl;

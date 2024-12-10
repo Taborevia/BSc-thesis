@@ -1,3 +1,5 @@
+// autor: Paweł Grzegorzewski
+// modul odpowiedzialny za obsluge planszy gry, logike ruchow i konca gry
 #include "model.hpp"
 #include <iostream>
 #include <iomanip>
@@ -23,12 +25,6 @@ bool Model::is_legal_move(int move, bool player, std::array<std::array<int,11>,2
 }
 // 0 - game in progress, 1 - player 0 won, 2 - player 1 won, 3 - draw
 int Model::game_over_check(std::array<std::array<int,11>,2>& temp_board){
-    // for(int i = 0; i<2; i++){
-    //     for(int j = 0; j<11; j++){
-    //         outfile<<std::setfill('0')<<std::setw(2)<<board.at(i).at(j)<<" ";
-    //     }
-    //     outfile<<std::endl;
-    // }
     if (temp_board.at(0).at(9) > 81){
         return 1;
     }
@@ -38,31 +34,23 @@ int Model::game_over_check(std::array<std::array<int,11>,2>& temp_board){
     if (temp_board.at(0).at(9) == 81 and temp_board.at(1).at(9) == 81){
         return 3;
     }
-    // if ((temp_board.at(0).at(9) + temp_board.at(0).at(9) > 100) && get_legal_moves(1, temp_board).empty()){
-    // if (get_legal_moves(1, temp_board).empty()){
     if (!is_any_legal_move(1, temp_board)){
         for (int i = 0; i < 9; i++){
-            // std::cout<<temp_board.at(1).at(i);
             if(temp_board.at(0).at(i)>=0){
                 temp_board.at(0).at(9) += temp_board.at(0).at(i);
                 temp_board.at(0).at(i) = 0;
             }
-            // std::cout<<std::endl;
         }
         return game_over_check(temp_board);
     }
-    // if ((temp_board.at(0).at(9) + temp_board.at(0).at(9) > 100) && get_legal_moves(0, temp_board).empty()){
-    // if (get_legal_moves(0, temp_board).empty()){
     if (!is_any_legal_move(0, temp_board)){
         for (int i = 0; i < 9; i++){
-            // std::cout<<temp_board.at(0).at(i);
             if(temp_board.at(1).at(i)==-3){
                 continue;
             }
             temp_board.at(1).at(9) += temp_board.at(1).at(i);
             temp_board.at(1).at(i) = 0;
         }
-        // std::cout<<std::endl;
         return game_over_check(temp_board);
     }
     return 0;
@@ -87,7 +75,6 @@ std::vector<int> Model::get_legal_moves(bool player, std::array<std::array<int,1
     return legal_moves;
 }
 bool Model::make_move(int move, bool player, std::array<std::array<int,11>,2>& board){
-    // std::cout<<move<<" "<<player<<std::endl<<std::endl;
     if (board == std::array<std::array<int,11>,2>{}) {  
         board = this->board;  
     }
@@ -151,7 +138,7 @@ bool Model::make_move(int move, bool player, std::array<std::array<int,11>,2>& b
 }
 void Model::print_board(){
     for(int i = 0; i<2; i++){
-        for(int j = 0; j<11; j++){
+        for(int j = 0; j<9; j++){
             std::cout<<std::setfill('0')<<std::setw(2)<<board.at(i).at(j)<<" ";
         }
         std::cout<<std::endl;

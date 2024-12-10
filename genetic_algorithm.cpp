@@ -1,5 +1,6 @@
+// autor: Paweł Grzegorzewski
+// modul odpowiedzialny za algorytm genetyczny
 #include "genetic_algorithm.hpp"
-
 #include "algorithm"
 #include "simulation.hpp"
 #include <fstream>
@@ -8,7 +9,7 @@
 #include <future>
 #include <iostream>
 #include <sstream>
-#define MAX_WAGE 128
+#define MAX_WAGE 127
 #define MIN_WAGE -127
 std::ofstream output("genotypy.txt");
 
@@ -31,9 +32,7 @@ void GA::mutation(std::vector<individual>& population, float propability, std::m
     for (int i = 0;i<n;i++){
         random = rand(rng);
         if (random<=propability){
-            std::cout<<"to tu"<<std::endl;
             population.at(i).genotype.at(genRand(rng)) = weightRand(rng);     
-            std::cout<<"po tu"<<std::endl;
         }        
     }
 }
@@ -44,14 +43,12 @@ void GA::fitnessAll(std::vector<individual>& population){
         population.at(i).fitness = 0;
     }
     std::vector<std::future<std::vector<int>>> results;
-    std::cout<<"tutaj1"<<std::endl;
     for(int i = 0; i<size;i++){
         for (int j = i+1; j<size;j++){
             results.push_back(std::async(std::launch::async,simulation,population.at(i).genotype,population.at(j).genotype,4,4,i,j));
             results.push_back(std::async(std::launch::async,simulation,population.at(j).genotype,population.at(i).genotype,4,4,j,i));
         }
     }
-    std::cout<<"tutaj2"<<std::endl;
     for (auto& result : results){
         std::vector<int> info = result.get();
         switch (info.at(0)){
@@ -67,7 +64,6 @@ void GA::fitnessAll(std::vector<individual>& population){
                 break;
         }
     }
-    std::cout<<"tutaj3"<<std::endl;
 
 }
 void GA::fitnessAll_2(std::vector<individual>& population){
@@ -81,7 +77,6 @@ void GA::fitnessAll_2(std::vector<individual>& population){
     std::uniform_int_distribution<int> genRand(0, size-1);
 
     std::vector<std::future<std::vector<int>>> results;
-    std::cout<<"tutaj1"<<std::endl;
     for(int i = 0; i<size;i++){
         for (int j = 0; j<10;j++){
             int tester = genRand(rng);
@@ -89,7 +84,6 @@ void GA::fitnessAll_2(std::vector<individual>& population){
             results.push_back(std::async(std::launch::async,simulation,population.at(tester).genotype,population.at(i).genotype,4,4,-1,i));
         }
     }
-    std::cout<<"tutaj2"<<std::endl;
     for (auto& result : results){
         std::vector<int> info = result.get();
         if (info.at(1)!=-1){
@@ -148,27 +142,19 @@ void GA::crossover_roulette(std::vector<individual>& population, std::mt19937& r
         }
     }
     
-    for (int i = 0;i<size;i++){
-        std::cout<<propabilities.at(i)<<" ";
-    }
-    std::cout<<std::endl;
     for (int pairs = 0; pairs<(size/2);pairs++){
         std::array<individual,2> parents;     
         for (int i = 0;i<2;i++){
             float random = dist(rng);
-            std::cout<<"random: "<<random;
             for (int j = 0;j<size;j++){
                 if (propabilities.at(j)>=random || j == size-1){
                     parents.at(i) = population.at(j);
-                    std::cout<<"wybrano: "<<j<<" ";
                     break;
                 }        
             }
         }
-        std::cout<<std::endl;
         individual child1;
         individual child2;
-        //DOOOOO SPRAWDZENIAAAAA
         for (int k = 0;k<parents.at(0).genotype.size();k++){
             if (dist2(rng)){
                 child1.genotype.push_back(parents.at(0).genotype.at(k));
@@ -178,22 +164,6 @@ void GA::crossover_roulette(std::vector<individual>& population, std::mt19937& r
                 child2.genotype.push_back(parents.at(0).genotype.at(k));
             }
         }
-        // for(int i =0;i<child1.genotype.size();i++){
-        //     std::cout<< child1.genotype.at(i)<<" ";
-        // }
-        // std::cout<<std::endl;
-        // for(int i =0;i<child1.genotype.size();i++){
-        //     std::cout<< child2.genotype.at(i)<<" ";
-        // }
-        // std::cout<<std::endl;
-        // for(int i =0;i<child1.genotype.size();i++){
-        //     std::cout<< parents.at(0).genotype.at(i)<<" ";
-        // }
-        // std::cout<<std::endl;
-        // for(int i =0;i<child1.genotype.size();i++){
-        //     std::cout<< parents.at(1).genotype.at(i)<<" ";
-        // }
-        // std::cout<<std::endl;
         population.push_back(child1);
         population.push_back(child2);
     }
@@ -206,7 +176,6 @@ void GA::crossover(std::vector<individual>& population, std::mt19937& rng){
         parents.push_back(population.at(i));
     }
     population.clear();
-    std::cout<<"parents: "<<parents.size();
     for (int i = 0;i<parents.size();i++){
         for (int j = i+1; j<parents.size();j++){
             individual child1;
@@ -235,27 +204,9 @@ std::vector<int> makeRandomVector(int n, std::mt19937& rng){
 }
 void GA::genetic_algorithm(int populationSize, int numberOfGenerations, float propabilityOfMutation, int numberOfWages,  std::mt19937& rng){
     std::vector<individual> population(populationSize);
-    std::ifstream inputFile("temp_genotypy.txt");  // Nazwa pliku z danymi
-    std::string line;
-    int numberOfIndividual = 0;
-    while (std::getline(inputFile, line)) {
-        std::stringstream ss(line);
-        std::vector<int> currentVector;  // Tymczasowy wektor dla bieżącej linii
-        int value;
-        
-        while (ss >> value) {
-            currentVector.push_back(value);
-        }
-
-        if (!currentVector.empty()) {
-            population.at(numberOfIndividual).genotype = currentVector;
-        }
-        numberOfIndividual++;
+    for (int i = 0;i<populationSize;i++){
+        population.at(i).genotype = makeRandomVector(numberOfWages,rng);
     }
-    inputFile.close();
-    // for (int i = 0;i<populationSize;i++){
-    //     population.at(i).genotype = makeRandomVector(numberOfWages,rng);
-    // }
     
     for (int generation = 0;generation<numberOfGenerations;generation++){
         
@@ -276,7 +227,6 @@ void GA::genetic_algorithm(int populationSize, int numberOfGenerations, float pr
         for(int i = 0;i<population.size();i++){
             output<<population.at(i).fitness<<" ";
         }population.resize(populationSize); //wyrzucenie nadmiarowych najgorszych obiektów
-        // crossover(population, rng);
         crossover_roulette(population, rng);
         mutation(population, propabilityOfMutation, rng);
         if(genetic_end_check(population,1)){
@@ -284,17 +234,4 @@ void GA::genetic_algorithm(int populationSize, int numberOfGenerations, float pr
         }
     }
 }
-int main(){
-    GA test;
-    auto seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-    std::mt19937 rng(static_cast<unsigned>(seed));
-    test.genetic_algorithm(1000,10000,0.01,26,rng);
-    //test fitnessall
-    // std::vector<individual> population(2);
-    // population.at(0).genotype = makeRandomVector(26,rng);
-    // population.at(1).genotype = makeRandomVector(26,rng);
-    // std::cout<<simulation(population.at(0).genotype, population.at(1).genotype,4,4,0,1).at(0)<<std::endl;
-    // std::cout<<simulation(population.at(1).genotype,population.at(0).genotype, 4,4,1,0).at(0)<<std::endl;
-    // test.fitnessAll(population);
-    // std::cout<<population.at(0).fitness<<" "<<population.at(1).fitness;
-}
+

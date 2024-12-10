@@ -1,3 +1,5 @@
+// autor: Paweł Grzegorzewski
+// modul odpowiedzialny za logike gracza, implementacje botow: min-max i mcts
 #include "simulation.hpp"
 #include "player.hpp"
 #include <iostream>
@@ -12,7 +14,6 @@
 #include <thread>
 #include <future>
 
-// std::ofstream testy("wyniki.txt");
 
 Player::Player(Model &board, bool numberOfPlayer, std::vector<int> weightEvaluateFunction)
     : model(board), player(numberOfPlayer), weightEvaluateFunction(weightEvaluateFunction) {
@@ -20,7 +21,6 @@ Player::Player(Model &board, bool numberOfPlayer, std::vector<int> weightEvaluat
 Player::Player(Model &board, bool numberOfPlayer)
     : model(board), player(numberOfPlayer) {
 }
-// DODAJ FUNKCJE FIND BEST MOVE
 void Player::make_move(int move){
     model.make_move(move, player, model.get_board());
 }
@@ -31,12 +31,6 @@ void Player::make_mcts_move(float resources, float c_parameter, bool multi_threa
     model.make_move(monte_carlo_tree_search(model.get_board(),resources,player,c_parameter,multi_threading),player,model.get_board());
 }
 float Player::evaluate(std::array<std::array<int,11>,2> board){
-    // for(int i = 0; i<2; i++){
-    //     for(int j = 0; j<11; j++){
-    //         testy<<std::setfill('0')<<std::setw(2)<<board.at(i).at(j)<<" ";
-    //     }
-    //     testy<<std::endl;
-    // }
 
     // C*
     switch (model.game_over_check(board)){
@@ -85,7 +79,7 @@ float Player::evaluate(std::array<std::array<int,11>,2> board){
                             }
                         }
                     }
-                    //last hole case
+                    //przypadek ostatniego dolka
                     if (side == 0){
                         move--;
                     }else{move++;}
@@ -155,7 +149,6 @@ std::pair<float,int> Player::minmax(std::array<std::array<int,11>,2> board, int 
             if (board.at(isMaximizingPlayer).at(move)== 0 || board.at(isMaximizingPlayer).at(move)==-3){
                 continue;
             }
-        // for (int& move : model.get_legal_moves(isMaximizingPlayer, board)) {
             std::array<std::array<int,11>,2> tempBoard = std::array<std::array<int,11>,2>(board);
             model.make_move(move, isMaximizingPlayer, tempBoard);
             float eval = minmax(tempBoard, depth - 1, !isMaximizingPlayer, m, beta).first;
@@ -170,7 +163,6 @@ std::pair<float,int> Player::minmax(std::array<std::array<int,11>,2> board, int 
         return std::make_pair(m,bestMove);
     } else {
         float m = beta;
-        // for (int& move : model.get_legal_moves(isMaximizingPlayer, board)) {
         for (int move = 0; move<9; move ++){
             if (board.at(isMaximizingPlayer).at(move)== 0 || board.at(isMaximizingPlayer).at(move)==-3){
                 continue;
