@@ -9,7 +9,8 @@
 #include <math.h>
 #include <random>
 #include <memory>
-
+#include <thread>
+#include <future>
 
 // std::ofstream testy("wyniki.txt");
 
@@ -26,8 +27,8 @@ void Player::make_move(int move){
 void Player::make_minmax_move(int depth){
     model.make_move(minmax(model.get_board(),depth,player, INT_MIN, INT_MAX).second,player, model.get_board());
 }
-void Player::make_mcts_move(float resources, float c_parameter){
-    model.make_move(monte_carlo_tree_search(model.get_board(),resources,player,c_parameter),player,model.get_board());
+void Player::make_mcts_move(float resources, float c_parameter, bool multi_threading){
+    model.make_move(monte_carlo_tree_search(model.get_board(),resources,player,c_parameter,multi_threading),player,model.get_board());
 }
 float Player::evaluate(std::array<std::array<int,11>,2> board){
     // for(int i = 0; i<2; i++){
@@ -124,10 +125,6 @@ float Player::evaluate(std::array<std::array<int,11>,2> board){
             }
         }
     }
-    // for (int i = 0;i<C_values.size();i++){
-    //     std::cout<<C_values.at(i)<<" ";
-    // }
-    // std::cout<<std::endl;
     //normalizacja wartosci C
     C_values.at(0) /= 81;
     C_values.at(1) /= 81;
@@ -194,15 +191,21 @@ std::pair<float,int> Player::minmax(std::array<std::array<int,11>,2> board, int 
 
     }
 }
-int Player::monte_carlo_tree_search(std::array<std::array<int,11>,2> board, float resources, int is_maximizing_player, float c_parameter){
+int Player::monte_carlo_tree_search(std::array<std::array<int,11>,2> board, float resources, int is_maximizing_player, float c_parameter, bool multi_threading){
+    unsigned int threads = std::thread::hardware_concurrency();
     auto start = std::chrono::high_resolution_clock::now();
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
     auto root = std::make_shared<node>(is_maximizing_player,board,std::weak_ptr<node>(),-1,model.get_legal_moves(is_maximizing_player,board),model.game_over_check(board),true);
     while(duration.count()<=resources){
         std::shared_ptr<node> v = tree_policy(root,c_parameter);
-        float reward = default_policy(v);
-        back_propagation(v,reward);
+        if (multi_threading){
+            std::pair<float,float> reward = default_policy_multi_threading(v,threads);
+            back_propagation(v,reward.first,reward.second);
+        }else{
+            float reward = default_policy(v);
+            back_propagation(v,reward,1-reward);
+        }
         end = std::chrono::high_resolution_clock::now();
         duration = end - start;
     }
@@ -247,16 +250,6 @@ std::shared_ptr<node> Player::best_child(std::shared_ptr<node> state, float c){
             best_value = value;
         }
     }
-    if (best_child==-1){
-        std::cout<<std::endl<<state->childrens.at(0)->reward<<" "<<state->childrens.at(0)->simulations<<" "<<state->simulations<<std::endl;
-        for(int i = 0; i<2; i++){
-            for(int j = 0; j<11; j++){
-                std::cout<<std::setfill('0')<<std::setw(2)<<state->board.at(i).at(j)<<" ";
-            }
-        std::cout<<std::endl;
-    }
-    // std::cout<<state->parent->simulations<<" "<<state->parent->parent->simulations;
-    }
     return state->childrens.at(best_child);
 }
 std::shared_ptr<node> Player::expand(std::shared_ptr<node> state){
@@ -295,45 +288,69 @@ float Player::default_policy(std::shared_ptr<node> state){
     }else if(result==3){
         return 0.5;
     }
+    return 0;
 }
-void Player::back_propagation(std::shared_ptr<node> state, float reward){
-    state->reward+=reward;
+std::pair<float,float> Player::default_policy_multi_threading(std::shared_ptr<node> state, unsigned int threads){
+    float result = 0;
+    float result2 = 0;
+    if (state->game_status==0){
+        if (threads == 0){
+            result = random_simulation(state->board,state->player);
+        }else{
+            std::vector<std::future<int>> results;
+            for(int i = 0;i<threads;i++){
+                results.push_back(std::async(std::launch::async,random_simulation,state->board,state->player));
+            }
+            for (auto& score : results){
+                switch (score.get()){
+                    case 1:
+                        if (state->player){
+                            result += 1;
+                        }else{
+                            result2 += 1;
+                        }
+                        break;
+                    case 2:
+                        if(!state->player){
+                            result += 1;
+                        }else{
+                            result2 += 1;
+                        }
+                        break;
+                    case 3:
+                        result += 0.5;
+                        result2 += 0.5;
+                        break;
+                }
+            }
+            return std::make_pair(result/threads,result2/threads);
+        }
+    }else{
+        result = state->game_status;
+    }
+    if (result==1){
+        if (state->player){
+            return std::make_pair(1,0);
+        }else{
+            return std::make_pair(0,1);
+        }
+    }else if(result==2){
+        if(state->player){
+            return std::make_pair(0,1);
+        }else{
+            return std::make_pair(1,0);
+        }
+    }else if(result==3){
+        return std::make_pair(0.5,0.5);
+    }
+    return std::make_pair(0,0);
+}
+void Player::back_propagation(std::shared_ptr<node> state, float reward1, float reward2){
+    state->reward+=reward1;
     state->simulations+=1;
+
     if(!state->root){
         auto temp = state->parent.lock();
-        if (reward==1){
-            back_propagation(temp,0);
-        }else if (reward ==0){
-            back_propagation(temp,1);
-            
-        }else{
-            back_propagation(temp,0.5);
-        }
+        back_propagation(temp,reward2,reward1);
     }
 }
-
-// int Player::findBestMove(std::array<std::array<int,11>,2> board, int depth, int isMaximizingPlayer) {
-//     float bestEval = isMaximizingPlayer ? INT32_MIN : INT32_MAX;
-//     int bestMove = -1;
-//     for (int& move : model.get_legal_moves(isMaximizingPlayer,board)) {
-//         std::array<std::array<int,11>,2> tempBoard = std::array<std::array<int,11>,2>(board);
-//         model.make_move(move,isMaximizingPlayer,tempBoard);
-//         float eval = minimax(tempBoard, depth, isMaximizingPlayer, -100000, 100000);
-//         // std::cout<<move<<" , "<<eval<<std::endl;
-//         if(isMaximizingPlayer){ //player1
-//             if (eval > bestEval) {
-//                 bestEval = eval;
-//                 bestMove = move;
-//                 // std::cout<<bestEval<<" "<<move;
-//             }
-//         }else{// player0
-//             if (eval < bestEval) {
-//                 bestEval = eval;
-//                 bestMove = move;
-//                 // std::cout<<bestEval<<" "<<move;
-//             }
-//         }
-//     }
-//     // std::cout<<"best: "<<bestMove<<std::endl;
-//     return bestMove;
-// }
